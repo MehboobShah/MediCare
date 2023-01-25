@@ -1,0 +1,7 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <RootNamespace>MediCare.Shared</RootNamespace>
+        <AssemblyName>MediCare.Shared</AssemblyName>
+    </PropertyGroup>
+</Project>

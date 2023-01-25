@@ -1,0 +1,17 @@
+global using Ardalis.Specification;
+global using FluentValidation;
+global using MediCare.Application.Common.Events;
+global using MediCare.Application.Common.Exceptions;
+global using MediCare.Application.Common.FileStorage;
+global using MediCare.Application.Common.Interfaces;
+global using MediCare.Application.Common.Models;
+global using MediCare.Application.Common.Persistence;
+global using MediCare.Application.Common.Specification;
+global using MediCare.Application.Common.Validation;
+global using MediCare.Domain.Catalog;
+global using MediCare.Domain.Common;
+global using MediCare.Domain.Common.Contracts;
+global using MediCare.Shared.Notifications;
+global using MediatR;
+global using Microsoft.Extensions.Localization;
+global using Microsoft.Extensions.Logging;
