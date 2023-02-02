@@ -2,7 +2,9 @@
 using DocumentFormat.OpenXml.ExtendedProperties;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Mapster;
+using MediCare.Application.Auditing;
 using MediCare.Application.Common.Persistence;
+using MediCare.Application.Medical;
 using MediCare.Application.Processing;
 using MediCare.Domain.Report;
 using MediCare.Domain.Users;
@@ -23,6 +25,9 @@ public class ParserService : IParserService
     private readonly IRepository<AnalyteResult> _analyteResultRepository;
     private readonly IRepository<PatientReport> _patientReportsRepository;
     private readonly IRepository<Patient> _patientRepository;
+    private readonly ILabService _labService;
+    private string reportText;
+    private int i;
 
     private readonly IStringLocalizer _t;
 
@@ -30,11 +35,13 @@ public class ParserService : IParserService
         IRepository<AnalyteResult> analyteResultRepository,
         IRepository<PatientReport> patientReportsRepository,
         IRepository<Patient> patientRepository,
+        ILabService labService,
         IStringLocalizer<ParserService> localizer)
     {
         _analyteResultRepository = analyteResultRepository;
         _patientReportsRepository = patientReportsRepository;
         _patientRepository = patientRepository;
+        _labService = labService;
         _t = localizer;
 
     }
@@ -92,7 +99,7 @@ public class ParserService : IParserService
 
         ".ToLower();
 
-        List<Lab> labs = LabServices.GetLabs();
+        var labs = await _labService.GetAllAsync(cancellationToken);
         List<TestType> testTypes = TestTypeServices.GetTestTypes();
         List<AnalyteDto> analytes = TestTypeServices.GetTestTypeAnalytes("haematology");
 
