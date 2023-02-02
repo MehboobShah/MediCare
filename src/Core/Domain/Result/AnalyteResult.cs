@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 namespace MediCare.Domain.Report;
 public class AnalyteResult : AuditableEntity, IAggregateRoot
 {
-    public int PatientReportId { get; set; }
-    public int AnalyteId { get; set; }
+    public DefaultIdType PatientReportId { get; set; }
+    public DefaultIdType AnalyteId { get; set; }
     public string? Result { get; set; }
     public string? StartRange { get; set; }
     public string? EndRange { get; set; }
-    public Analyte? Analyte { get; set; }
+    public Analyte Analyte { get; set; }
+    public PatientReport PatientReport { get; set; }
 }

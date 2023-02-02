@@ -8,8 +8,16 @@ namespace MediCare.Infrastructure.Persistence.Configuration;
 
 public class PatientConfig : IEntityTypeConfiguration<Patient>
 {
-    public void Configure(EntityTypeBuilder<Patient> builder) =>
+    public void Configure(EntityTypeBuilder<Patient> builder)
+    {
         builder
-            .ToTable("Patient", SchemaNames.Users)
+            .ToTable(nameof(Patient), SchemaNames.Users)
             .HasKey(p => p.Id);
+
+        builder
+            .HasMany(p => p.PatientReports)
+            .WithOne(pr => pr.Patient)
+            .HasForeignKey(pr => pr.PatientId)
+            .HasPrincipalKey(p => p.Id);
+    }
 }

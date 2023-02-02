@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediCare.Domain.Report;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,4 +23,6 @@ public class Patient : AuditableEntity, IAggregateRoot
     public string? MedicalReportNo { get; set; }
     public string? Ward { get; set; }
     public string? BedNo { get; set; }
+    public List<PatientReport> PatientReports { get; set; }
+
 }
