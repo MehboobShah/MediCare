@@ -36,6 +36,9 @@ internal class ApplicationDbInitializer
 
                 await _dbSeeder.SeedDatabaseAsync(_dbContext, cancellationToken);
             }
+
+            await _dbContext.Database.ExecuteSqlRawAsync(
+            "CREATE OR ALTER VIEW ReferentialUser AS SELECT Id, FirstName, LastName, Email FROM \"Identity\".\"Users\"");
         }
     }
 }

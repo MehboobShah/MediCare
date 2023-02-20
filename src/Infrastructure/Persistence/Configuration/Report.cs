@@ -21,5 +21,11 @@ public class PatientReportConfig : IEntityTypeConfiguration<PatientReport>
             .HasForeignKey(pr => pr.PatientReportId)
             .HasPrincipalKey(p => p.Id);
 
+        builder
+            .HasOne(ru => ru.User)
+            .WithMany(pr => pr.PatientReports)
+            .HasForeignKey(pr => pr.UserId)
+            .HasPrincipalKey(ru => ru.Id);
+
     }
 }

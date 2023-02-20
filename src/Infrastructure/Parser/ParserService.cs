@@ -5,29 +5,61 @@ using Mapster;
 using MediCare.Application.Auditing;
 using MediCare.Application.Common.Persistence;
 using MediCare.Application.Medical;
+using MediCare.Application.Ontology;
 using MediCare.Application.Processing;
+using MediCare.Application.Report;
+using MediCare.Application.Users;
+using MediCare.Domain.Ontology;
 using MediCare.Domain.Report;
 using MediCare.Domain.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BBD.WebApi.Infrastructure.Exercises;
+namespace MediCare.Infrastructure.Parser;
 public class ParserService : IParserService
 {
     private readonly IRepository<AnalyteResult> _analyteResultRepository;
     private readonly IRepository<PatientReport> _patientReportsRepository;
     private readonly IRepository<Patient> _patientRepository;
     private readonly ILabService _labService;
+    private readonly IPatientReportService _patientReportService;
+    private readonly IPatientService _patientService;
+    private readonly ITestTypeService _testTypeService;
+    private readonly IDictionaryService _dictionaryService;
+    private readonly IAnalyteResultService _analyteResultService;
     private string reportText;
     private int i;
+    private string word = string.Empty;
+    string temp = string.Empty;
+    private const string EscapeCharacters = "()[]{}-.:";
+    private const string EscapeCharacters2 = "#-%";
+    private List<Keyword> keywords;
+    private Patient patient;
+
+    private bool IfLabNameParsed { get; set; } = false;
+    private bool LabTestNameParsed { get; set; } = false;
+    private bool IsFieldNameParsed { get; set; }
+    private bool IsValueParsed { get; set; }
+    private bool IsFieldNameParsingStarted { get; set; }
+    private bool IsValueParsingStarted { get; set; }
+    private bool IsMultiField { get; set; }
+    private bool IsAnalyteParsed { get; set; }
+    private bool IsAnalyteStartRangeParsed { get; set; }
+    private bool IsAnalyteEndRangeParsed { get; set; }
+    private bool IsAnalyteResultParsed { get; set; }
+    private List<string> Fields { get; set; }
+    private List<string> Values { get; set; }
+    private Stack<string> Brackets { get; set; }
 
     private readonly IStringLocalizer _t;
 
@@ -36,80 +68,128 @@ public class ParserService : IParserService
         IRepository<PatientReport> patientReportsRepository,
         IRepository<Patient> patientRepository,
         ILabService labService,
+        ITestTypeService testTypeService,
+        IPatientReportService patientReportService,
+        IDictionaryService dictionaryService,
+        IPatientService patientService,
+        IAnalyteResultService analyteResultService,
         IStringLocalizer<ParserService> localizer)
     {
         _analyteResultRepository = analyteResultRepository;
         _patientReportsRepository = patientReportsRepository;
         _patientRepository = patientRepository;
         _labService = labService;
+        _testTypeService = testTypeService;
+        _patientReportService = patientReportService;
+        _dictionaryService = dictionaryService;
+        _patientService = patientService;
+        _analyteResultService = analyteResultService;
         _t = localizer;
+        Fields = new List<string>();
+        Values = new List<string>();
+        Brackets = new Stack<string>();
 
     }
 
-    public async Task<bool> UploadPdfAsync(UploadPdfRequest request, CancellationToken cancellationToken)
+    public async Task<bool> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken)
     {
+        AddPatientReportRequest patientReportRequest = new AddPatientReportRequest { LabName = request.LabName, TestType = request.TestType};
+        var patientReportId = await _patientReportService.AddPatientReportAsync(patientReportRequest, userId, cancellationToken);
 
-        reportText = @"                                     SAIFEE HOSPITAL          (Managed By Saifee Hospital Trust)
+        reportText =
+            @"Stadium Road, P.O. Box 3500, Karachi - 74800,
+                                                        Pakistan
+                                                        U.P. Morr Collection Unit Tel:(021) 36950168
 
+Medical Record # : L25516744 (UM80387)
+                  1
 
-                                                    LABORATORY REPORT                                                   
-        Receipt / MR #          SNR-202206-00047 / PAK SUZUKI [31152]                                                   Report #        DRP-202206-00614
-        Patient                 01012725 / ZAINAB NAUSHAD BAIG
-        Referred by             DR.SAIMA GHAYAS                                                                         Age / Gender 25 Year / Female
-        Ward/Bed #              -                                                                                       Requested on 02/06/2022 - 10:13 PM
-        Specimen #              DSC-202206-00283             Collected on      03/06/2022 - 02:11 AM (C1)               Reported on 03/06/2022 - 03:12 AM
+Patient Name            : SUFIYAN,ANIS                                                    Age / Gender : 21Y / Male
+                                                                                               Location : UPMORE
+Specimen ID             : 29082022:HR5112R
+                                                                               Requesting Physician : Unknown
+Clinical Information / Comments:                                                              Account # : C37130849 - OSR
 
-                                                          HAEMATOLOGY
-                                                   Historical Results           Current
-        Test                                                                           Result                           Reference Range(Female)
+None                                                                                     Requested on : 29/08/2022 - 11:06
+                                                                                           Collected on : 29/08/2022 - 11:06
+Test                                                    Result                             Reported on : 29/08/2022 - 17:44
 
-        HAEMOGLOBIN                                                                     11 g/dL             ..........   11.5 - 15.4
-        ERYTHROCYTES COUNT                                                              3.89 10E12/L        ..........   3.8 - 5.2
-        HAEMATOCRIT                                                                     31.9 %              ..........   35 - 47
-        MCV                                                                             82 fL               ..........   80 - 100
-        MCH                                                                             28.3 Pg             ..........   27 - 34
-        MCHC                                                                            34.5 g/dL           ..........   31 - 36
+[COMPLETE BLOOD COUNT]                                                                                     Normal Ranges
+[HAEMOGLOBIN HAEMATOCRIT]
+HAEMOGLOBIN                             ..............  13.4 g/dl                ..............  (12.3-16.6)
+HAEMATOCRIT                             ..............  40.2 %                   ..............  (38.4-50.7)
 
-        TOTAL LEUCOCYTE COUNT                                                           9 x10E9/L           ..........   4 - 10
+R.B.C.                                  .............. 4.55 x10E12/L             ..............  (4.25-6.02)
 
-        NEUTROPHILS                                                                     67.2 %              ..........   40 - 80
-        LYMPHOCYTES                                                                     24.1 %              ..........   20 - 40
-        MONOCYTES                                                                       7.6 %               ..........   2 - 10
-        EOSINOPHILS                                                                     1.1 %               ..........   0.3 - 7.4
+M.C.V.                                  .............. 88.4 fL                   ..............  (78.7-96.3)
 
-        PLATELETS COUNT                                                                 235 x10E9/L         ..........   150 - 450
+M.C.H.                                  .............. 29.5 pg                   ..............  (25.1-31.6)
 
+M.C.H.C.                                .............. 33.3 g/dL                 ..............  (30-35.5)
 
-        MORPHOLOGY OF RBCs:                           Normocytic, Normochromic.
+R.D.W                                   .............. 13.1 %                    ..............  (12.1-16.9)
+        This is an electronic report & not
+W.B.C.                                  .............. 3.6 x10E9/L               ..............  (4.8-11.3)
 
-         
+                                        ..............  46.2 %                   ..............  (34.9-76.2)
+                                        ..............  49.3 %                   ..............  (17.5-45)
+to be used for any legal purposes NEUTROPHILS
 
+LYMPHOCYTES
 
-        Software Developed By ISR Software Services(Pvt.) Ltd.                                                                    Reported by : UMER FAREED (LAB)
-        Note : This is a computer generated report, therefore signatures are not required.        Printed on / by : 03/06/2022 03:20 AM / UMER FAREED (LAB)
-        DR.NAZISH KASHIF
-        M.C.P.S
-        HAEMATOLOGIST
+EOSINOPHILS                             .............. 0.3 %                     ..............  (0.3-7.4)
 
+MONOCYTES                               .............. 3.6 %                     ..............  (3.9-10)
 
-                 ST-1 Block-F North Nazimabad, Karachi-74700. Tel: 36789400,36690696,36649866
-                 Cell: 0346-8229956-60 Fax: 36724900,36628206 Email: info@saifeehospital.com.pk
-                                       Website: www.saifeehospital.com.pk
-        -----------------------Page 1 End-----------------------
+BASOPHILS                               .............. 0.6 %                     ..............  (0-1)
+
+Neutrophils lymphocytes ratio (NLR)     .............. 0.9 ratio                 ..............  (1-4)
+
+PLATELETS                               .............. 103 x10E9/L               ..............  (154-433)
+
+        METHODOLOGY:
+        The test is performed on Automated Haematology Analyzer.
+
+PERIPHERAL FILM                         ..............
+
+        NORMOCYTIC, NORMOCHROMIC
+
+        PLATELETS LOW ON FILM
+
+        LEUCOPENIA
+
+        LEFT SHIFT NEUTROPHILS
+
+        ? CAUSE
+
+        Kindly Note reference Ranges change on 06/12/2018.
+
+This is a computer generated report therefore does not require any signature.
+
+Dr. Bushra Moiz         Dr. Mohammad Usman Shaikh       Dr. Salman Naseem Adil   Dr. Natasha Ali              Dr. Muhammad Shariq Shaikh
+MBBS, FCPS(Hematology)  MBBS, FCPS(Hematology)          MBBS, FCPS (Hematology)  MBBS, FCPS (Hematology)      MBBS, FCPS (Hematology)
+Associate Professor     Associate Professor             Professor                Associate Professor          Assistant Professor
+
+Dr. Anila Rashid        Dr. Muhammad Hasan
+MBBS, FCPS(Hematology)  MBBS, FCPS(Hematology)
+Assistant Professor     Senior Instructor
 
         ".ToLower();
 
         var labs = await _labService.GetAllAsync(cancellationToken);
-        List<TestType> testTypes = TestTypeServices.GetTestTypes();
-        List<AnalyteDto> analytes = TestTypeServices.GetTestTypeAnalytes("haematology");
+        var testTypes = await _testTypeService.GetAllTestTypeAsync(cancellationToken);
+        var analytes = await _testTypeService.GetAllTestTypeAnalyteAsync("haematology", cancellationToken);
+        keywords = await _dictionaryService.GetAllAsync(cancellationToken);
+        patient = new Patient();
+        var analyteResult = new AnalyteResult();
 
         for (i = 0; i < reportText.Length; i++)
         {
 
             if (IsAnalyteParsed && IsAnalyteResultParsed && IsAnalyteStartRangeParsed && IsAnalyteEndRangeParsed)
             {
-                analyteResult.PatientreportId = patientReportId;
-                AnalyteResultServices.InsertAnalyteResult(analyteResult);
+                analyteResult.PatientReportId = patientReportId;
+                await _analyteResultService.AddAnalyteResultAsync(analyteResult, cancellationToken);
                 analyteResult = new AnalyteResult();
                 IsAnalyteParsed = false;
                 IsAnalyteResultParsed = false;
@@ -119,10 +199,10 @@ public class ParserService : IParserService
 
             if (reportText[i] == ' ')
             {
-                if (!String.IsNullOrEmpty(word))
+                if (!string.IsNullOrEmpty(word))
                 {
 
-                    if (i + 1 < reportText.Length && !escapeCharacters2.Contains(reportText[i + 1]) && (!Char.IsLetterOrDigit(reportText[i + 1])))
+                    if (i + 1 < reportText.Length && !EscapeCharacters2.Contains(reportText[i + 1]) && (!char.IsLetterOrDigit(reportText[i + 1])))
                     {
 
                         if (reportText[i + 1] == '/')
@@ -130,6 +210,7 @@ public class ParserService : IParserService
                             FieldValueParser();
                             continue;
                         }
+
                         if (!IsAnalyteParsed)
                         {
                             var analyte = analytes.Where(p => p.Name.Trim() == word.Trim()).FirstOrDefault();
@@ -138,13 +219,14 @@ public class ParserService : IParserService
                             {
                                 analyteResult.AnalyteId = analyte.Id;
                                 IsAnalyteParsed = true;
-                                word = String.Empty;
+                                word = string.Empty;
                                 continue;
 
                             }
 
                         }
-                        //done - last field of single field
+
+                        // done - last field of single field
                         if (!IsFieldNameParsingStarted)
                         {
                             if (!IfLabNameParsed && LabNameParser(labs))
@@ -194,6 +276,7 @@ public class ParserService : IParserService
                                     }
 
                                 }
+
                                 word = string.Empty;
                                 temp = string.Empty;
                                 continue;
@@ -214,21 +297,23 @@ public class ParserService : IParserService
                             i++;
                             continue;
                         }
-                        //done - last field of multifield
+
+                        // done - last field of multifield
                         if (IsFieldNameParsingStarted && !IsFieldNameParsed && IsMultiField)
                         {
                             IsFieldNameParsed = true;
                             IsValueParsingStarted = true;
                             Fields.Add(word);
-                            word = String.Empty;
+                            word = string.Empty;
                             i++;
                             continue;
 
                         }
-                        //done - last value of multi/single value
+
+                        // done - last value of multi/single value
                         if (IsFieldNameParsed && IsValueParsingStarted)
                         {
-                            if (escapeCharacters.Contains(reportText[i + 1]))
+                            if (EscapeCharacters.Contains(reportText[i + 1]))
                             {
                                 word += reportText[i];
                                 continue;
@@ -236,7 +321,7 @@ public class ParserService : IParserService
                             else
                             {
                                 Values.Add(word);
-                                word = String.Empty;
+                                word = string.Empty;
                                 IsFieldNameParsed = false;
                                 IsFieldNameParsingStarted = false;
                                 IsValueParsed = false;
@@ -247,13 +332,15 @@ public class ParserService : IParserService
                                 continue;
                             }
                         }
+
                         if (!IsFieldNameParsed && !IsValueParsed)
                         {
                             IsFieldNameParsed = true;
                             Fields.Add(word);
-                            word = String.Empty;
+                            word = string.Empty;
                             continue;
                         }
+
                         if (IsFieldNameParsed && IsValueParsed && IsMultiField)
                         {
                             ParseFieldAndValueLists();
@@ -278,7 +365,7 @@ public class ParserService : IParserService
                         else
                         {
                             Fields.Add(word);
-                            word = String.Empty;
+                            word = string.Empty;
                             IsFieldNameParsingStarted = true;
                             IsFieldNameParsed = true;
                         }
@@ -295,15 +382,16 @@ public class ParserService : IParserService
             }
             else if (reportText[i] == '(')
             {
-                if (!String.IsNullOrEmpty(word))
+                if (!string.IsNullOrEmpty(word))
                 {
                     Brackets.Push(word);
-                    word = "";
+                    word = string.Empty;
                     while (i + 1 < reportText.Length && reportText[i + 1] != ')')
                     {
                         i++;
                         word += reportText[i];
                     }
+
                     var keyword = ExtractKeyword(word);
                     if (keyword == "ignore")
                     {
@@ -327,6 +415,7 @@ public class ParserService : IParserService
                         i++;
                         word += reportText[i];
                     }
+
                     var keyword = ExtractKeyword(word);
                     HandleKeyword(keyword);
                     i++;
@@ -334,15 +423,14 @@ public class ParserService : IParserService
                 }
 
             }
-            else if (Char.IsLetterOrDigit(reportText[i]))
+            else if (char.IsLetterOrDigit(reportText[i]))
             {
                 word += reportText[i];
 
-
             }
-            else if ((IsFieldNameParsed || IsAnalyteParsed) && escapeCharacters.Contains(reportText[i]))
+            else if ((IsFieldNameParsed || IsAnalyteParsed) && EscapeCharacters.Contains(reportText[i]))
             {
-                if (!word.Any(Char.IsLetterOrDigit))
+                if (!word.Any(char.IsLetterOrDigit))
                 {
                     Fields.Clear();
                     IsValueParsingStarted = false;
@@ -350,7 +438,7 @@ public class ParserService : IParserService
                     IsFieldNameParsingStarted = false;
                     IsFieldNameParsed = false;
                     IsMultiField = false;
-                    word = String.Empty;
+                    word = string.Empty;
                 }
                 else
                 {
@@ -360,9 +448,9 @@ public class ParserService : IParserService
                 continue;
 
             }
-            else if (i + 1 < reportText.Length && (reportText[i] == '\r' && reportText[i + 1] == '\n') || (reportText[i] == '\n' && reportText[i + 1] == '\r'))
+            else if (i + 1 < reportText.Length && ((reportText[i] == '\r' && reportText[i + 1] == '\n') || (reportText[i] == '\n' && reportText[i + 1] == '\r')))
             {
-                if (!String.IsNullOrEmpty(word))
+                if (!string.IsNullOrEmpty(word))
                 {
                     if (IsFieldNameParsed)
                     {
@@ -394,7 +482,6 @@ public class ParserService : IParserService
                         continue;
                     }
 
-
                 }
                 else
                 {
@@ -404,7 +491,7 @@ public class ParserService : IParserService
             }
             else if (reportText[i] == '\r' || reportText[i] == '\n')
             {
-                if (!String.IsNullOrEmpty(word))
+                if (!string.IsNullOrEmpty(word))
                 {
                     HandleKeyword(ExtractKeyword(word));
                 }
@@ -416,11 +503,12 @@ public class ParserService : IParserService
             }
             else if (reportText[i] == '/')
             {
-                if (Char.IsDigit(reportText[i + 1]))
+                if (char.IsDigit(reportText[i + 1]))
                 {
                     word += reportText[i];
                     continue;
                 }
+
                 FieldValueParser();
                 i--;
                 continue;
@@ -428,11 +516,218 @@ public class ParserService : IParserService
 
         }
 
-        PatientServices.InsertPatient(patient);
-
-        string result = "";
+        bool result = await _patientService.AddPatientAsync(patient, cancellationToken);
+        var currentDir = System.IO.Directory.GetCurrentDirectory();
+        System.IO.File.WriteAllText(currentDir + "\\Results\\patient_" + patient.Id.ToString() + ".txt", JsonConvert.SerializeObject(patient));
 
         return result;
     }
 
+    private void FieldValueParser()
+    {
+        if (IsAnalyteParsed)
+        {
+            word += reportText[i];
+            i++;
+        }
+
+        // done - first field of multifield
+        else if (!IsFieldNameParsingStarted)
+        {
+            IsMultiField = true;
+            IsFieldNameParsingStarted = true;
+            Fields.Add(word);
+            word = string.Empty;
+            i++;
+        }
+
+        // done - middle field of multifield
+        else if (IsFieldNameParsingStarted && !IsFieldNameParsed && IsMultiField)
+        {
+            Fields.Add(word);
+            if (reportText[i + 1] != '/')
+            {
+                IsFieldNameParsed = true;
+
+            }
+            word = string.Empty;
+            i++;
+        }
+
+        // done - middle value of multivalue
+        else if (IsFieldNameParsed && IsValueParsingStarted && IsMultiField)
+        {
+            Values.Add(word);
+            word = string.Empty;
+            i++;
+        }
+        else if (IsFieldNameParsed && !IsValueParsed && !IsMultiField)
+        {
+            if (Fields[0] == "name")
+            {
+                word += reportText[i];
+                word += reportText[++i];
+
+            }
+        }
+
+        // done - first value of multivalue
+        else if (IsFieldNameParsed && !IsValueParsingStarted && IsMultiField)
+        {
+            IsValueParsingStarted = true;
+            Values.Add(word);
+            word = string.Empty;
+            i++;
+        }
+    }
+
+    private bool LabNameParser(List<LabDto> labs)
+    {
+        var exists = labs.Where(x => x.Name.Contains(word)).FirstOrDefault();
+        if (exists != null)
+        {
+            IfLabNameParsed = true;
+            word = string.Empty;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool LabTestNameParser(List<TestTypeDto> testTypes)
+    {
+        var exists = testTypes.Where(x => x.Name.Contains(word)).FirstOrDefault();
+        if (exists != null)
+        {
+            LabTestNameParsed = true;
+            word = string.Empty;
+            return true;
+        }
+
+        return false;
+    }
+
+    private string ExtractKeyword(string word)
+    {
+        var result = keywords.Where(kw =>
+
+            kw.Dictionaries.Any(dictionary => word.Trim().Contains(dictionary.Name))).ToList();
+
+        if (result != null && result.Count > 0)
+        {
+            if (result.Find(k => k.Name == "ignore") != null)
+            {
+                return "ignore";
+            }
+            else
+            {
+                return result.FirstOrDefault().Name;
+            }
+        }
+        else
+        {
+            return "Invalid Keyword";
+        }
+
+    }
+
+    private string CheckMaxFieldLength(string temp, string keyword)
+    {
+
+        if (keyword == "Invalid Keyword")
+        {
+            temp += word + " ";
+            word = string.Empty;
+        }
+        else
+        {
+            Fields.Add(temp + keyword);
+            temp = string.Empty;
+            word = string.Empty;
+
+        }
+
+        return temp;
+    }
+
+    private void ParseFieldAndValueLists()
+    {
+        if (Fields.Count == Values.Count)
+        {
+            for (int j = 0; j < Fields.Count; j++)
+            {
+                HandleKeyword(ExtractKeyword(Fields[j]), Values[j]);
+
+            }
+
+            Fields.Clear();
+            Values.Clear();
+            IsMultiField = false;
+            IsFieldNameParsed = false;
+            IsValueParsed = false;
+            IsFieldNameParsingStarted = false;
+            IsValueParsingStarted = false;
+            word = string.Empty;
+        }
+
+    }
+
+    private void HandleKeyword(string keyword, string value = "")
+    {
+
+        switch (keyword)
+        {
+            case "ignore":
+                word = string.Empty;
+                break;
+            case "receipt":
+                patient.Receipt = value;
+                break;
+            case "name":
+                patient.Name = value;
+                break;
+            case "age":
+                patient.Age = value;
+                break;
+            case "gender":
+                patient.Gender = value;
+                break;
+            case "location":
+                patient.Location = value;
+                break;
+            case "medical record no":
+                patient.MedicalRecordNo = value;
+                break;
+            case "specimen no":
+                patient.SpecimenNo = value;
+                break;
+            case "requested on":
+                patient.RequestedOn = value;
+                break;
+            case "reported on":
+                patient.ReportedOn = value;
+                break;
+            case "collected on":
+                patient.CollectedOn = value;
+                break;
+            case "account no":
+                patient.AccountNo = value;
+                break;
+            case "referred by":
+                patient.ReferredBy = value;
+                break;
+            case "report no":
+                patient.MedicalReportNo = value;
+                break;
+            case "bed":
+                patient.BedNo = value;
+                break;
+            case "ward":
+                patient.Ward = value;
+                break;
+            case "Invalid Keyword":
+
+                break;
+        }
+    }
 }

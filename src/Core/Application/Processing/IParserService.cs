@@ -8,6 +8,6 @@ namespace MediCare.Application.Processing;
 public interface IParserService : ITransientService
 {
 
-    Task<bool> UploadPdfAsync(UploadPdfRequest request, CancellationToken cancellationToken);
+    Task<bool> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken);
 
 }

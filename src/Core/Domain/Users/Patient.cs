@@ -1,4 +1,5 @@
-﻿using MediCare.Domain.Report;
+﻿using MediCare.Domain.Identity;
+using MediCare.Domain.Report;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,7 @@ public class Patient : AuditableEntity, IAggregateRoot
 {
     public string Name { get; set; } = default!;
     public string? Gender { get; set; }
+    public string? UserId { get; set; }
     public string? Age { get; set; }
     public string? Location { get; set; }
     public string? MedicalRecordNo { get; set; }
@@ -23,6 +25,6 @@ public class Patient : AuditableEntity, IAggregateRoot
     public string? MedicalReportNo { get; set; }
     public string? Ward { get; set; }
     public string? BedNo { get; set; }
-    public List<PatientReport> PatientReports { get; set; }
+    public ReferentialUser User { get; set; }
 
 }

@@ -11,4 +11,5 @@ internal static class SchemaNames
     public static string Result = "Result"; // "Result";
     public static string Users = "Users"; // "Users";
     public static string Medical = "Medical"; // "Medical";
+    public static string Ontology = "Ontology"; // "Ontology";
 }

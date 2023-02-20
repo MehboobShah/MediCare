@@ -15,9 +15,6 @@ public class PatientConfig : IEntityTypeConfiguration<Patient>
             .HasKey(p => p.Id);
 
         builder
-            .HasMany(p => p.PatientReports)
-            .WithOne(pr => pr.Patient)
-            .HasForeignKey(pr => pr.PatientId)
-            .HasPrincipalKey(p => p.Id);
+            .HasOne(p => p.User);
     }
 }

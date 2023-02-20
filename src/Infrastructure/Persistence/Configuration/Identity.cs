@@ -1,4 +1,6 @@
 ﻿using Finbuckle.MultiTenant.EntityFrameworkCore;
+using MediCare.Domain.Identity;
+using MediCare.Domain.Users;
 using MediCare.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +20,19 @@ public class ApplicationUserConfig : IEntityTypeConfiguration<ApplicationUser>
             .Property(u => u.ObjectId)
                 .HasMaxLength(256);
     }
+}
+
+public class ReferentialUserConfig : IEntityTypeConfiguration<ReferentialUser>
+{
+
+    public void Configure(EntityTypeBuilder<ReferentialUser> builder)
+    {
+        builder
+            .ToView(nameof(ReferentialUser), "dbo")
+            .HasKey(ru => ru.Id);
+
+    }
+
 }
 
 public class ApplicationRoleConfig : IEntityTypeConfiguration<ApplicationRole>

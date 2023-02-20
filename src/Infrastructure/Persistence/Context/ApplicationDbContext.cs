@@ -2,6 +2,7 @@ using Finbuckle.MultiTenant;
 using MediCare.Application.Common.Events;
 using MediCare.Application.Common.Interfaces;
 using MediCare.Domain.Catalog;
+using MediCare.Domain.Ontology;
 using MediCare.Domain.Report;
 using MediCare.Domain.Users;
 using MediCare.Infrastructure.Persistence.Configuration;
@@ -35,6 +36,11 @@ public class ApplicationDbContext : BaseDbContext
 
     // Users
     public DbSet<Patient> Patients => Set<Patient>();
+
+    // Ontology
+    public DbSet<Keyword> Keywords => Set<Keyword>();
+    public DbSet<Dictionary> Dictionarys => Set<Dictionary>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

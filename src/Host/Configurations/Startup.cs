@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace MediCare.Host.Configurations;
 
 internal static class Startup
@@ -32,7 +34,9 @@ internal static class Startup
                 .AddJsonFile($"{configurationsDirectory}/signalr.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"{configurationsDirectory}/securityheaders.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"{configurationsDirectory}/securityheaders.{env.EnvironmentName}.json", optional: true, reloadOnChange: true)
-                .AddEnvironmentVariables();
+                .AddEnvironmentVariables()
+                .AddUserSecrets(Assembly.GetExecutingAssembly(), true);
+
         });
         return host;
     }
