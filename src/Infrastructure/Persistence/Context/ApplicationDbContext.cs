@@ -2,6 +2,9 @@ using Finbuckle.MultiTenant;
 using MediCare.Application.Common.Events;
 using MediCare.Application.Common.Interfaces;
 using MediCare.Domain.Catalog;
+using MediCare.Domain.Ontology;
+using MediCare.Domain.Report;
+using MediCare.Domain.Users;
 using MediCare.Infrastructure.Persistence.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -17,6 +20,27 @@ public class ApplicationDbContext : BaseDbContext
 
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Brand> Brands => Set<Brand>();
+
+    // Medical
+    public DbSet<Lab> Labs => Set<Lab>();
+    public DbSet<LabTestType> LabTestTypes => Set<LabTestType>();
+    public DbSet<TestType> TestTypes => Set<TestType>();
+    public DbSet<TestTypeAnalyte> TestTypeAnalytes => Set<TestTypeAnalyte>();
+
+    // Report
+    public DbSet<PatientReport> PatientReports => Set<PatientReport>();
+
+    // Result
+    public DbSet<Analyte> Analytes => Set<Analyte>();
+    public DbSet<AnalyteResult> AnalyteResults => Set<AnalyteResult>();
+
+    // Users
+    public DbSet<Patient> Patients => Set<Patient>();
+
+    // Ontology
+    public DbSet<Keyword> Keywords => Set<Keyword>();
+    public DbSet<Dictionary> Dictionarys => Set<Dictionary>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

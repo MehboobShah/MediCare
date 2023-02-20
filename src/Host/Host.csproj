@@ -3,6 +3,7 @@
         <TargetFramework>net6.0</TargetFramework>
         <RootNamespace>MediCare.Host</RootNamespace>
         <AssemblyName>MediCare.Host</AssemblyName>
+        <UserSecretsId>9f77f146-9a81-4ec2-9750-a5aac90af163</UserSecretsId>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="FluentValidation.AspNetCore" Version="10.3.6" />

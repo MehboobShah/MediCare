@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 namespace MediCare.Domain.Report;
 public class Analyte : AuditableEntity, IAggregateRoot
 {
-    public int PatientId { get; set; }
-    public int TestTypeId { get; set; }
-    public int LabId { get; set; }
+    public string Name { get; set; } = default!;
+    public List<AnalyteResult> AnalyteResults { get; set; }
+    public List<TestTypeAnalyte> TestTypeAnalytes { get; set; }
+
 }

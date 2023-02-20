@@ -16,6 +16,11 @@ public class CurrentUser : ICurrentUser, ICurrentUserInitializer
             ? Guid.Parse(_user?.GetUserId() ?? Guid.Empty.ToString())
             : _userId;
 
+    public string GetUserIdAsString() =>
+        IsAuthenticated()
+            ? _user?.GetUserId() ?? string.Empty
+            : _userId.ToString();
+
     public string? GetUserEmail() =>
         IsAuthenticated()
             ? _user!.GetEmail()
