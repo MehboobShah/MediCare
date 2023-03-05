@@ -11,5 +11,6 @@ public interface IDictionaryService : ITransientService
 {
     Task<List<Keyword>> GetAllAsync(CancellationToken cancellationToken);
     Task<bool> AddKeywordsAsync(AddKeywordsRequest request, CancellationToken cancellationToken);
+    Task<DefaultIdType> UpdateKeywordsAsync(UpdateKeywordsRequest request, CancellationToken cancellationToken);
 
 }

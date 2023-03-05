@@ -1,6 +1,8 @@
 ﻿using Ardalis.Specification.EntityFrameworkCore;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Mapster;
+using MediCare.Application.Catalog.Brands;
+using MediCare.Application.Common.Exceptions;
 using MediCare.Application.Common.Persistence;
 using MediCare.Application.Medical;
 using MediCare.Application.Ontology;
@@ -25,13 +27,16 @@ public class DictionaryService : IDictionaryService
 {
     private readonly IRepository<Dictionary> _dictionaryRepository;
     private readonly IRepository<Keyword> _keywordRepository;
+    private readonly IStringLocalizer<UpdateKeywordsRequestHandler> _localizer;
 
     public DictionaryService(
         IRepository<Dictionary> dictionaryRepository,
-        IRepository<Keyword> keywordRepository)
+        IRepository<Keyword> keywordRepository,
+        IStringLocalizer<UpdateKeywordsRequestHandler> localizer)
     {
         _dictionaryRepository = dictionaryRepository;
         _keywordRepository = keywordRepository;
+        _localizer = localizer;
     }
 
     public async Task<List<Keyword>> GetAllAsync(CancellationToken cancellationToken)
@@ -56,6 +61,19 @@ public class DictionaryService : IDictionaryService
 
         return true;
 
+    }
+    public async Task<DefaultIdType> UpdateKeywordsAsync(UpdateKeywordsRequest request, CancellationToken cancellationToken)
+    {
+        var keyword = await _keywordRepository.GetAll().Include(k => k.Dictionaries).FirstOrDefaultAsync(k => k.Id == request.Id);
+        _ = keyword ?? throw new NotFoundException(_localizer["Keyword Not Found."]);
+
+        keyword.Id = request.Id;
+        keyword.Name = request.Name;
+        keyword.Dictionaries = request.Synonyms.Select(s => new Dictionary { Name = s}).ToList();
+
+        await _keywordRepository.UpdateAsync(keyword, cancellationToken);
+        await _keywordRepository.SaveChangesAsync();
+        return keyword.Id;
     }
 
 }

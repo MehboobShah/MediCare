@@ -24,6 +24,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace MediCare.Infrastructure.Parser;
 public class ParserService : IParserService
@@ -41,10 +42,13 @@ public class ParserService : IParserService
     private int i;
     private string word = string.Empty;
     string temp = string.Empty;
-    private const string EscapeCharacters = "()[]{}-.:";
+    string analyteTemp = string.Empty;
+    private const string EscapeCharacters = "()[]{}-.";
     private const string EscapeCharacters2 = "#-%";
     private List<Keyword> keywords;
+    private List<TestTypeAnalyteDto> analytes;
     private Patient patient;
+    private AnalyteResult analyteResult;
 
     private bool IfLabNameParsed { get; set; } = false;
     private bool LabTestNameParsed { get; set; } = false;
@@ -60,6 +64,9 @@ public class ParserService : IParserService
     private List<string> Fields { get; set; }
     private List<string> Values { get; set; }
     private Stack<string> Brackets { get; set; }
+    private Queue<string>? TempFieldQueue { get; set; }
+    private bool isPreviousFieldExist { get; set; }
+    private bool isPreviousFieldExistAfterNewLine { get; set; }
 
     private readonly IStringLocalizer _t;
 
@@ -88,6 +95,7 @@ public class ParserService : IParserService
         Fields = new List<string>();
         Values = new List<string>();
         Brackets = new Stack<string>();
+        analyteResult = new AnalyteResult();
 
     }
 
@@ -97,12 +105,11 @@ public class ParserService : IParserService
         var patientReportId = await _patientReportService.AddPatientReportAsync(patientReportRequest, userId, cancellationToken);
 
         reportText =
-            @"Stadium Road, P.O. Box 3500, Karachi - 74800,
+            @"                                                        Stadium Road, P.O. Box 3500, Karachi - 74800,
                                                         Pakistan
                                                         U.P. Morr Collection Unit Tel:(021) 36950168
 
-Medical Record # : L25516744 (UM80387)
-                  1
+Medical Record # : L25516744 (UM80387)                                                                                                                                        1     
 
 Patient Name            : SUFIYAN,ANIS                                                    Age / Gender : 21Y / Male
                                                                                                Location : UPMORE
@@ -114,55 +121,42 @@ None                                                                            
                                                                                            Collected on : 29/08/2022 - 11:06
 Test                                                    Result                             Reported on : 29/08/2022 - 17:44
 
-[COMPLETE BLOOD COUNT]                                                                                     Normal Ranges
-[HAEMOGLOBIN HAEMATOCRIT]
+                                                                                                           Normal Ranges
+
 HAEMOGLOBIN                             ..............  13.4 g/dl                ..............  (12.3-16.6)
 HAEMATOCRIT                             ..............  40.2 %                   ..............  (38.4-50.7)
 
-R.B.C.                                  .............. 4.55 x10E12/L             ..............  (4.25-6.02)
+R.B.C.                                  ..............  4.55 x10E12/L            ..............  (4.25-6.02)
+M.C.V.                                  ..............  88.4 fL                  ..............  (78.7-96.3)
+M.C.H.                                  ..............  29.5 pg                  ..............  (25.1-31.6)
+M.C.H.C.                                ..............  33.3 g/dL                ..............  (30-35.5)
+R.D.W                                   ..............  13.1 %                   ..............  (12.1-16.9)
 
-M.C.V.                                  .............. 88.4 fL                   ..............  (78.7-96.3)
+W.B.C.                                  ..............  3.6 x10E9/L              ..............  (4.8-11.3)
+NEUTROPHILS                             ..............  46.2 %                   ..............  (34.9-76.2)
+LYMPHOCYTES                             ..............  49.3 %                   ..............  (17.5-45)
+EOSINOPHILS                             ..............  0.3 %                    ..............  (0.3-7.4)
+MONOCYTES                               ..............  3.6 %                    ..............  (3.9-10)
+BASOPHILS                               ..............  0.6 %                    ..............  (0-1)
+Neutrophils lymphocytes ratio (NLR)     ..............  0.9 ratio                ..............  (1-4)
+PLATELETS                               ..............  103 x10E9/L              ..............  (154-433)
 
-M.C.H.                                  .............. 29.5 pg                   ..............  (25.1-31.6)
-
-M.C.H.C.                                .............. 33.3 g/dL                 ..............  (30-35.5)
-
-R.D.W                                   .............. 13.1 %                    ..............  (12.1-16.9)
-        This is an electronic report & not
-W.B.C.                                  .............. 3.6 x10E9/L               ..............  (4.8-11.3)
-
-                                        ..............  46.2 %                   ..............  (34.9-76.2)
-                                        ..............  49.3 %                   ..............  (17.5-45)
-to be used for any legal purposes NEUTROPHILS
-
-LYMPHOCYTES
-
-EOSINOPHILS                             .............. 0.3 %                     ..............  (0.3-7.4)
-
-MONOCYTES                               .............. 3.6 %                     ..............  (3.9-10)
-
-BASOPHILS                               .............. 0.6 %                     ..............  (0-1)
-
-Neutrophils lymphocytes ratio (NLR)     .............. 0.9 ratio                 ..............  (1-4)
-
-PLATELETS                               .............. 103 x10E9/L               ..............  (154-433)
-
-        METHODOLOGY:
-        The test is performed on Automated Haematology Analyzer.
+      METHODOLOGY:
+      The test is performed on Automated Haematology Analyzer.
 
 PERIPHERAL FILM                         ..............
 
-        NORMOCYTIC, NORMOCHROMIC
+      NORMOCYTIC, NORMOCHROMIC
 
-        PLATELETS LOW ON FILM
+      PLATELETS LOW ON FILM
 
-        LEUCOPENIA
+      LEUCOPENIA
 
-        LEFT SHIFT NEUTROPHILS
+      LEFT SHIFT NEUTROPHILS
 
-        ? CAUSE
+      ? CAUSE
 
-        Kindly Note reference Ranges change on 06/12/2018.
+      Kindly Note reference Ranges change on 06/12/2018.
 
 This is a computer generated report therefore does not require any signature.
 
@@ -172,16 +166,14 @@ Associate Professor     Associate Professor             Professor               
 
 Dr. Anila Rashid        Dr. Muhammad Hasan
 MBBS, FCPS(Hematology)  MBBS, FCPS(Hematology)
-Assistant Professor     Senior Instructor
-
-        ".ToLower();
+Assistant Professor     Senior Instructor".ToLower();
 
         var labs = await _labService.GetAllAsync(cancellationToken);
         var testTypes = await _testTypeService.GetAllTestTypeAsync(cancellationToken);
-        var analytes = await _testTypeService.GetAllTestTypeAnalyteAsync("haematology", cancellationToken);
+        analytes = await _testTypeService.GetAllTestTypeAnalyteAsync("haematology", cancellationToken);
         keywords = await _dictionaryService.GetAllAsync(cancellationToken);
         patient = new Patient();
-        var analyteResult = new AnalyteResult();
+        
 
         for (i = 0; i < reportText.Length; i++)
         {
@@ -195,6 +187,11 @@ Assistant Professor     Senior Instructor
                 IsAnalyteResultParsed = false;
                 IsAnalyteStartRangeParsed = false;
                 IsAnalyteEndRangeParsed = false;
+            }
+
+            if (i == 1450)
+            {
+
             }
 
             if (reportText[i] == ' ')
@@ -213,15 +210,10 @@ Assistant Professor     Senior Instructor
 
                         if (!IsAnalyteParsed)
                         {
-                            var analyte = analytes.Where(p => p.Name.Trim() == word.Trim()).FirstOrDefault();
 
-                            if (analyte != null)
+                            if (ExtractAnalyte(analyteTemp + word))
                             {
-                                analyteResult.AnalyteId = analyte.Id;
-                                IsAnalyteParsed = true;
-                                word = string.Empty;
                                 continue;
-
                             }
 
                         }
@@ -276,6 +268,20 @@ Assistant Professor     Senior Instructor
                                     }
 
                                 }
+                                else if (isPreviousFieldExist)
+                                {
+                                    Fields.Add(TempFieldQueue.Dequeue());
+
+                                    if (TempFieldQueue.Count == 0)
+                                    {
+                                        TempFieldQueue = null;
+                                        isPreviousFieldExist = false;
+                                        isPreviousFieldExistAfterNewLine = false;
+                                    }
+
+                                    Values.Add(word);
+                                    ParseFieldAndValueLists();
+                                }
 
                                 word = string.Empty;
                                 temp = string.Empty;
@@ -320,6 +326,12 @@ Assistant Professor     Senior Instructor
                             }
                             else
                             {
+
+                                if (CheckIfFieldisKeywordOrNot())
+                                {
+                                    continue;
+                                }
+
                                 Values.Add(word);
                                 word = string.Empty;
                                 IsFieldNameParsed = false;
@@ -359,7 +371,11 @@ Assistant Professor     Senior Instructor
                         }
                         else if (IsMultiField)
                         {
-                            FieldValueParser();
+                            if (!FieldValueParser())
+                            {
+                                continue;
+                            }
+
                             i--;
                         }
                         else
@@ -369,7 +385,6 @@ Assistant Professor     Senior Instructor
                             IsFieldNameParsingStarted = true;
                             IsFieldNameParsed = true;
                         }
-
 
                     }
 
@@ -384,6 +399,7 @@ Assistant Professor     Senior Instructor
             {
                 if (!string.IsNullOrEmpty(word))
                 {
+
                     Brackets.Push(word);
                     word = string.Empty;
                     while (i + 1 < reportText.Length && reportText[i + 1] != ')')
@@ -391,6 +407,7 @@ Assistant Professor     Senior Instructor
                         i++;
                         word += reportText[i];
                     }
+
 
                     var keyword = ExtractKeyword(word);
                     if (keyword == "ignore")
@@ -417,7 +434,19 @@ Assistant Professor     Senior Instructor
                     }
 
                     var keyword = ExtractKeyword(word);
-                    HandleKeyword(keyword);
+                    if (keyword == "Invalid Keyword")
+                    {
+                        if (!IsAnalyteParsed && ExtractAnalyte(analyteTemp + "(" + word + ")"))
+                        {
+                            i++;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        HandleKeyword(keyword);
+                    }
+
                     i++;
                     continue;
                 }
@@ -450,18 +479,31 @@ Assistant Professor     Senior Instructor
             }
             else if (i + 1 < reportText.Length && ((reportText[i] == '\r' && reportText[i + 1] == '\n') || (reportText[i] == '\n' && reportText[i + 1] == '\r')))
             {
+                if (isPreviousFieldExist)
+                {
+                    isPreviousFieldExistAfterNewLine = true;
+                }
+
                 if (!string.IsNullOrEmpty(word))
                 {
+                    string keyword = ExtractKeyword(temp + word);
                     if (IsFieldNameParsed)
                     {
+                        if (CheckIfFieldisKeywordOrNot())
+                        {
+                            i = i + 1;
+                            continue;
+                        }
+
                         Values.Add(word);
                         ParseFieldAndValueLists();
                     }
                     else if (LabTestNameParser(testTypes) || LabNameParser(labs))
                     {
+                        i = i + 1;
                         continue;
                     }
-                    else if (ExtractKeyword(temp + word) == "Invalid Keyword" && IsAnalyteParsed)
+                    else if (keyword == "Invalid Keyword" && IsAnalyteParsed)
                     {
                         if (!IsAnalyteResultParsed && !word.Contains('-'))
                         {
@@ -479,15 +521,19 @@ Assistant Professor     Senior Instructor
 
                         word = string.Empty;
                         temp = string.Empty;
-                        continue;
+ 
+                    }
+                    else if((keyword == "Invalid Keyword" || keyword == "ignore") && !IsAnalyteParsed)
+                    {
+                        word = string.Empty;
+                        temp = string.Empty;
+
                     }
 
                 }
-                else
-                {
-                    i = i + 2;
-                    continue;
-                }
+
+                i = i + 1;
+                continue;
             }
             else if (reportText[i] == '\r' || reportText[i] == '\n')
             {
@@ -497,7 +543,6 @@ Assistant Professor     Senior Instructor
                 }
                 else
                 {
-                    i = i + 1;
                     continue;
                 }
             }
@@ -509,8 +554,11 @@ Assistant Professor     Senior Instructor
                     continue;
                 }
 
-                FieldValueParser();
-                i--;
+                if(FieldValueParser()) i--;
+                continue;
+            }
+            else
+            {
                 continue;
             }
 
@@ -523,7 +571,7 @@ Assistant Professor     Senior Instructor
         return result;
     }
 
-    private void FieldValueParser()
+    private bool FieldValueParser()
     {
         if (IsAnalyteParsed)
         {
@@ -550,6 +598,7 @@ Assistant Professor     Senior Instructor
                 IsFieldNameParsed = true;
 
             }
+
             word = string.Empty;
             i++;
         }
@@ -557,6 +606,11 @@ Assistant Professor     Senior Instructor
         // done - middle value of multivalue
         else if (IsFieldNameParsed && IsValueParsingStarted && IsMultiField)
         {
+            if (CheckIfFieldisKeywordOrNot())
+            {
+                return false;
+            }
+
             Values.Add(word);
             word = string.Empty;
             i++;
@@ -574,11 +628,18 @@ Assistant Professor     Senior Instructor
         // done - first value of multivalue
         else if (IsFieldNameParsed && !IsValueParsingStarted && IsMultiField)
         {
+            if (CheckIfFieldisKeywordOrNot())
+            {
+                return false;
+            }
+
             IsValueParsingStarted = true;
             Values.Add(word);
             word = string.Empty;
             i++;
         }
+
+        return true;
     }
 
     private bool LabNameParser(List<LabDto> labs)
@@ -592,6 +653,43 @@ Assistant Professor     Senior Instructor
         }
 
         return false;
+    }
+
+    private bool CheckIfFieldisKeywordOrNot()
+    {
+        //if (!isPreviousFieldExistAfterNewLine)
+        //{
+        //    return false;
+        //}
+
+        string keyword = ExtractKeyword(temp + word);
+        if (keyword != "Invalid Keyword")
+        {
+            if (Fields.Count > 0)
+            {
+                if (TempFieldQueue == null)
+                {
+                    TempFieldQueue = new Queue<string>(Fields);
+                }
+                else
+                {
+                    Fields.ForEach(TempFieldQueue.Enqueue);
+                }
+
+                isPreviousFieldExist = true;
+
+                Fields.Clear();
+            }
+
+            temp = CheckMaxFieldLength(temp, keyword);
+            IsFieldNameParsingStarted = true;
+            IsFieldNameParsed = true;
+            IsValueParsingStarted = true;
+            return true;
+        }
+
+        return false;
+
     }
 
     private bool LabTestNameParser(List<TestTypeDto> testTypes)
@@ -650,6 +748,32 @@ Assistant Professor     Senior Instructor
         return temp;
     }
 
+    private bool ExtractAnalyte(string analytestring)
+    {
+        var analyte = analytes.Where(p => p.Name.Trim().Contains(analytestring.Trim())).FirstOrDefault();
+
+        if (analyte != null)
+        {
+            if (analyte.Name.Trim() == analytestring.Trim() || (i + 1 < reportText.Length && reportText[i + 1] == ' '))
+            {
+                analyteResult.AnalyteId = analyte.Id;
+                IsAnalyteParsed = true;
+                word = string.Empty;
+                analyteTemp = string.Empty;
+            }
+            else
+            {
+                analyteTemp += word + " ";
+                word = string.Empty;
+
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     private void ParseFieldAndValueLists()
     {
         if (Fields.Count == Values.Count)
@@ -699,6 +823,7 @@ Assistant Professor     Senior Instructor
                 patient.MedicalRecordNo = value;
                 break;
             case "specimen no":
+            case "patient id":
                 patient.SpecimenNo = value;
                 break;
             case "requested on":

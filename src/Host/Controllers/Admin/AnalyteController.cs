@@ -15,4 +15,12 @@ public class AnalyteController : VersionNeutralApiController
     {
         return await Mediator.Send(request, cancellationToken);
     }
+
+    [HttpPost("search")]
+    [DisableCors]
+    [OpenApiOperation("Gets All Analytes", "")]
+    public async Task<ActionResult<PaginationResponse<AnalyteDto>>> SearchAsync(AnalyteListFilter filter, CancellationToken cancellationToken)
+    {
+        return Ok(await Mediator.Send(filter, cancellationToken));
+    }
 }
