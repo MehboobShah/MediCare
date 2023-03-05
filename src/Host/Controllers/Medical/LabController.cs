@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using MediatR;
 using MediCare.Application.Medical;
 using MediCare.Application.Processing;
 using Microsoft.AspNetCore.Cors;
