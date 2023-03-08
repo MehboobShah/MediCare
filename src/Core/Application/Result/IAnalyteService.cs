@@ -9,5 +9,6 @@ public interface IAnalyteService : ITransientService
 {
 
     Task<List<AnalyteDto>> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken);
+    Task<List<AnalyteResultListDto>> GetAnalyteResultAsync(GetAnalyteResultRequest request, CancellationToken cancellationToken);
 
 }

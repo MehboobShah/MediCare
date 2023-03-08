@@ -26,6 +26,6 @@ public class GetAnalyteResultRequestHandler : IRequestHandler<GetAnalyteResultRe
 
     public async Task<List<AnalyteResultListDto>> Handle(GetAnalyteResultRequest request, CancellationToken cancellationToken)
     {
-        return await _analyteService.AddAnalytesListAsync(request, cancellationToken);
+        return await _analyteService.GetAnalyteResultAsync(request, cancellationToken);
     }
 }
