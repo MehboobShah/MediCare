@@ -24,29 +24,62 @@ namespace BBD.WebApi.Infrastructure.Analytes;
 public class AnalyteService : IAnalyteService
 {
     private readonly IRepository<Analyte> _analyteRepository;
+    private readonly IRepository<AnalyteResult> _analyteResultRepository;
+    private readonly IRepository<PatientReport> _patientRepository;
 
     public AnalyteService(
+        IRepository<AnalyteResult> analyteResultRepository,
+        IRepository<PatientReport> patientRepository,
         IRepository<Analyte> analyteRepository)
     {
+        _patientRepository = patientRepository;
+        _analyteResultRepository = analyteResultRepository;
         _analyteRepository = analyteRepository;
 
     }
 
-    public async Task<bool> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken)
+    public async Task<List<AnalyteDto>> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken)
     {
-        foreach (var analyte in request.AnalytesList)
+        var analyteDtoList = new List<AnalyteDto>();
+        foreach (var item in request.AnalytesList)
         {
-            var lab = new Analyte
+            var analyte = new Analyte
             {
-                Name = analyte.Name.ToLower()
+                Name = item.Name.ToLower()
             };
 
-            var result = await _analyteRepository.AddAsync(lab, cancellationToken);
+            await _analyteRepository.AddAsync(analyte, cancellationToken);
+            analyteDtoList.Add(analyte.Adapt<AnalyteDto>());
         }
 
         await _analyteRepository.SaveChangesAsync(cancellationToken);
 
-        return true;
+        return analyteDtoList;
+
+    }
+
+    public async Task<List<AnalyteResultListDto>> GetAnalyteResultAsync(GetAnalyteResultRequest request, CancellationToken cancellationToken)
+    {
+        var analyteList = await _patientRepository.GetAll()
+            .Include(pr => pr.AnalyteResults)
+            .ThenInclude(ar => PatientReport)
+            .Where(ar => request.AnalyteIds.Contains(ar.Id) && ).ToListAsync();
+        var analyteDtoList = new List<AnalyteDto>();
+        var analyteListDto = analyteList.Adapt<List<AnalyteDto>>();
+        foreach (var item in request.AnalytesList)
+        {
+            var analyte = new Analyte
+            {
+                Name = item.Name.ToLower()
+            };
+
+            await _analyteRepository.AddAsync(analyte, cancellationToken);
+            analyteDtoList.Add(analyte.Adapt<AnalyteDto>());
+        }
+
+        await _analyteRepository.SaveChangesAsync(cancellationToken);
+
+        return analyteDtoList;
 
     }
 

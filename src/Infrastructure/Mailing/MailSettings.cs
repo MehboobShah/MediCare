@@ -13,4 +13,7 @@ public class MailSettings
     public string? Password { get; set; }
 
     public string? DisplayName { get; set; }
+    public string? SendGridApiKey { get; set; }
+    public string? Subject { get; set; }
+
 }

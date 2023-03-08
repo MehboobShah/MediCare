@@ -11,11 +11,17 @@ public class AnalyteController : VersionNeutralApiController
 
     [HttpPost]
     [OpenApiOperation("Adds Analytes", "")]
-    public async Task<bool> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken)
+    public async Task<List<AnalyteDto>> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken)
     {
         return await Mediator.Send(request, cancellationToken);
     }
 
+    [HttpGet]
+    [OpenApiOperation("Get Analytes", "")]
+    public async Task<List<AnalyteResultListDto>> GetAnalyteResultAsync(GetAnalyteResultRequest request, CancellationToken cancellationToken)
+    {
+        return await Mediator.Send(request, cancellationToken);
+    }
     [HttpPost("search")]
     [DisableCors]
     [OpenApiOperation("Gets All Analytes", "")]

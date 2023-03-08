@@ -8,6 +8,6 @@ namespace MediCare.Application.Result;
 public interface IAnalyteService : ITransientService
 {
 
-    Task<bool> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken);
+    Task<List<AnalyteDto>> AddAnalytesListAsync(AddAnalytesListRequest request, CancellationToken cancellationToken);
 
 }

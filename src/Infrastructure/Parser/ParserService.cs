@@ -8,6 +8,7 @@ using MediCare.Application.Medical;
 using MediCare.Application.Ontology;
 using MediCare.Application.Processing;
 using MediCare.Application.Report;
+using MediCare.Application.Result;
 using MediCare.Application.Users;
 using MediCare.Domain.Ontology;
 using MediCare.Domain.Report;
@@ -47,7 +48,7 @@ public class ParserService : IParserService
     private const string EscapeCharacters2 = "#-%";
     private List<Keyword> keywords;
     private List<TestTypeAnalyteDto> analytes;
-    private Patient patient;
+    private PatientReport patientReport;
     private AnalyteResult analyteResult;
 
     private bool IfLabNameParsed { get; set; } = false;
@@ -99,7 +100,7 @@ public class ParserService : IParserService
 
     }
 
-    public async Task<bool> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken)
+    public async Task<PatientDetailsDto> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken)
     {
         AddPatientReportRequest patientReportRequest = new AddPatientReportRequest { LabName = request.LabName, TestType = request.TestType};
         var patientReportId = await _patientReportService.AddPatientReportAsync(patientReportRequest, userId, cancellationToken);
@@ -172,7 +173,8 @@ Assistant Professor     Senior Instructor".ToLower();
         var testTypes = await _testTypeService.GetAllTestTypeAsync(cancellationToken);
         analytes = await _testTypeService.GetAllTestTypeAnalyteAsync("haematology", cancellationToken);
         keywords = await _dictionaryService.GetAllAsync(cancellationToken);
-        patient = new Patient();
+        patientReport = new PatientReport();
+        var analyteResultList = new List<AnalyteResultDto>();
         
 
         for (i = 0; i < reportText.Length; i++)
@@ -182,6 +184,7 @@ Assistant Professor     Senior Instructor".ToLower();
             {
                 analyteResult.PatientReportId = patientReportId;
                 await _analyteResultService.AddAnalyteResultAsync(analyteResult, cancellationToken);
+                analyteResultList.Add(analyteResult.Adapt<AnalyteResultDto>());
                 analyteResult = new AnalyteResult();
                 IsAnalyteParsed = false;
                 IsAnalyteResultParsed = false;
@@ -564,11 +567,15 @@ Assistant Professor     Senior Instructor".ToLower();
 
         }
 
-        bool result = await _patientService.AddPatientAsync(patient, cancellationToken);
+        var result = await _patientService.AddPatientAsync(patientReport, cancellationToken);
         var currentDir = System.IO.Directory.GetCurrentDirectory();
-        System.IO.File.WriteAllText(currentDir + "\\Results\\patient_" + patient.Id.ToString() + ".txt", JsonConvert.SerializeObject(patient));
+        System.IO.File.WriteAllText(currentDir + "\\Results\\patient_" + patientReport.Id.ToString() + ".txt", JsonConvert.SerializeObject(patientReport));
 
-        return result;
+        return new PatientDetailsDto
+        {
+            PatientDetails = result,
+            AnalyteResultDetails = analyteResultList
+        };
     }
 
     private bool FieldValueParser()
@@ -805,50 +812,50 @@ Assistant Professor     Senior Instructor".ToLower();
                 word = string.Empty;
                 break;
             case "receipt":
-                patient.Receipt = value;
+                patientReport.Receipt = value;
                 break;
             case "name":
-                patient.Name = value;
+                patientReport.Name = value;
                 break;
             case "age":
-                patient.Age = value;
+                patientReport.Age = value;
                 break;
             case "gender":
-                patient.Gender = value;
+                patientReport.Gender = value;
                 break;
             case "location":
-                patient.Location = value;
+                patientReport.Location = value;
                 break;
             case "medical record no":
-                patient.MedicalRecordNo = value;
+                patientReport.MedicalRecordNo = value;
                 break;
             case "specimen no":
             case "patient id":
-                patient.SpecimenNo = value;
+                patientReport.SpecimenNo = value;
                 break;
             case "requested on":
-                patient.RequestedOn = value;
+                patientReport.RequestedOn = value;
                 break;
             case "reported on":
-                patient.ReportedOn = value;
+                patientReport.ReportedOn = value;
                 break;
             case "collected on":
-                patient.CollectedOn = value;
+                patientReport.CollectedOn = value;
                 break;
             case "account no":
-                patient.AccountNo = value;
+                patientReport.AccountNo = value;
                 break;
             case "referred by":
-                patient.ReferredBy = value;
+                patientReport.ReferredBy = value;
                 break;
             case "report no":
-                patient.MedicalReportNo = value;
+                patientReport.MedicalReportNo = value;
                 break;
             case "bed":
-                patient.BedNo = value;
+                patientReport.BedNo = value;
                 break;
             case "ward":
-                patient.Ward = value;
+                patientReport.Ward = value;
                 break;
             case "Invalid Keyword":
 

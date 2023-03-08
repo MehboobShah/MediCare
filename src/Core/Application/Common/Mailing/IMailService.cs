@@ -2,5 +2,5 @@ namespace MediCare.Application.Common.Mailing;
 
 public interface IMailService : ITransientService
 {
-    Task SendAsync(MailRequest request);
+    Task SendAsync(MailRequest request, CancellationToken ct);
 }

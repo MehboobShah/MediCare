@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace MediCare.Application.Result;
-public class AddAnalytesListRequest : IRequest<bool>
+public class AddAnalytesListRequest : IRequest<List<AnalyteDto>>
 {
     public List<AddAnalytesListDto> AnalytesList { get; set; }
 
@@ -18,7 +18,7 @@ public class AnalyteListFilter : PaginationFilter, IRequest<PaginationResponse<A
 
 }
 
-public class AddAnalytesListRequestHandler : IRequestHandler<AddAnalytesListRequest, bool>
+public class AddAnalytesListRequestHandler : IRequestHandler<AddAnalytesListRequest, List<AnalyteDto>>
 {
     private readonly IAnalyteService _analyteService;
 
@@ -27,7 +27,7 @@ public class AddAnalytesListRequestHandler : IRequestHandler<AddAnalytesListRequ
         _analyteService = analyteService;
     }
 
-    public async Task<bool> Handle(AddAnalytesListRequest request, CancellationToken cancellationToken)
+    public async Task<List<AnalyteDto>> Handle(AddAnalytesListRequest request, CancellationToken cancellationToken)
     {
         return await _analyteService.AddAnalytesListAsync(request, cancellationToken);
     }

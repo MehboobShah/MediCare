@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MediCare.Application.Users;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,6 @@ namespace MediCare.Application.Processing;
 public interface IParserService : ITransientService
 {
 
-    Task<bool> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken);
+    Task<PatientDetailsDto> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken);
 
 }

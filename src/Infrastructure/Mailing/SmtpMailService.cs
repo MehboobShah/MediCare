@@ -7,7 +7,7 @@ using MimeKit;
 
 namespace MediCare.Infrastructure.Mailing;
 
-public class SmtpMailService : IMailService
+public class SmtpMailService //: IMailService
 {
     private readonly MailSettings _settings;
     private readonly ILogger<SmtpMailService> _logger;
