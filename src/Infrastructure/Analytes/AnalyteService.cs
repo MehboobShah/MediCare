@@ -61,9 +61,12 @@ public class AnalyteService : IAnalyteService
     public async Task<List<AnalyteResultListDto>> GetAnalyteResultAsync(GetAnalyteResultRequest request, CancellationToken cancellationToken)
     {
         var analyteList = await _patientRepository.GetAll()
-            .Include(pr => pr.AnalyteResults)
-            .ThenInclude(ar => PatientReport)
-            .Where(ar => request.AnalyteIds.Contains(ar.Id) && ).ToListAsync();
+            .Include(pr => pr.AnalyteResults.Where(ar => request.AnalyteIds.Contains(ar.AnalyteId)))
+            .Where(pr => Convert.ToDateTime(pr.CollectedOn.Substring(0, 10)) >= request.StartDate
+            && Convert.ToDateTime(pr.CollectedOn.Substring(0, 10)) <= request.EndDate)
+            .Select(pr => pr.AnalyteResults)
+            .ToListAsync();
+
         var analyteDtoList = new List<AnalyteDto>();
         var analyteListDto = analyteList.Adapt<List<AnalyteDto>>();
         foreach (var item in request.AnalytesList)
