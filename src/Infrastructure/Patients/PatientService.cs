@@ -34,9 +34,11 @@ public class PatientService : IPatientService
 
     public async Task<PatientDto> AddPatientAsync(PatientReport patientReport, CancellationToken cancellationToken)
     {
-        var result = await _patientRepository.AddAsync(patientReport, cancellationToken);
-        var patientDto = result.Adapt<PatientDto>();
+        var id = patientReport.Id;
+        await _patientRepository.UpdateAsync(patientReport, cancellationToken);
         await _patientRepository.SaveChangesAsync(cancellationToken);
+        var result = await _patientRepository.GetByIdAsync(id, cancellationToken);
+        var patientDto = result.Adapt<PatientDto>();
 
         return patientDto;
     }
