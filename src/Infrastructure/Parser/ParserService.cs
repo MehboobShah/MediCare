@@ -103,86 +103,22 @@ public class ParserService : IParserService
     public async Task<PatientDetailsDto> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken)
     {
         AddPatientReportRequest patientReportRequest = new AddPatientReportRequest { LabName = request.LabName, TestType = request.TestType};
-        var patientReportId = await _patientReportService.AddPatientReportAsync(patientReportRequest, userId, cancellationToken);
+        patientReport = await _patientReportService.AddPatientReportAsync(patientReportRequest, userId, cancellationToken);
 
-        reportText =
-            @"                                                        Stadium Road, P.O. Box 3500, Karachi - 74800,
-                                                        Pakistan
-                                                        U.P. Morr Collection Unit Tel:(021) 36950168
-
-Medical Record # : L25516744 (UM80387)                                                                                                                                        1     
-
-Patient Name            : SUFIYAN,ANIS                                                    Age / Gender : 21Y / Male
-                                                                                               Location : UPMORE
-Specimen ID             : 29082022:HR5112R
-                                                                               Requesting Physician : Unknown
-Clinical Information / Comments:                                                              Account # : C37130849 - OSR
-
-None                                                                                     Requested on : 29/08/2022 - 11:06
-                                                                                           Collected on : 29/08/2022 - 11:06
-Test                                                    Result                             Reported on : 29/08/2022 - 17:44
-
-                                                                                                           Normal Ranges
-
-HAEMOGLOBIN                             ..............  13.4 g/dl                ..............  (12.3-16.6)
-HAEMATOCRIT                             ..............  40.2 %                   ..............  (38.4-50.7)
-
-R.B.C.                                  ..............  4.55 x10E12/L            ..............  (4.25-6.02)
-M.C.V.                                  ..............  88.4 fL                  ..............  (78.7-96.3)
-M.C.H.                                  ..............  29.5 pg                  ..............  (25.1-31.6)
-M.C.H.C.                                ..............  33.3 g/dL                ..............  (30-35.5)
-R.D.W                                   ..............  13.1 %                   ..............  (12.1-16.9)
-
-W.B.C.                                  ..............  3.6 x10E9/L              ..............  (4.8-11.3)
-NEUTROPHILS                             ..............  46.2 %                   ..............  (34.9-76.2)
-LYMPHOCYTES                             ..............  49.3 %                   ..............  (17.5-45)
-EOSINOPHILS                             ..............  0.3 %                    ..............  (0.3-7.4)
-MONOCYTES                               ..............  3.6 %                    ..............  (3.9-10)
-BASOPHILS                               ..............  0.6 %                    ..............  (0-1)
-Neutrophils lymphocytes ratio (NLR)     ..............  0.9 ratio                ..............  (1-4)
-PLATELETS                               ..............  103 x10E9/L              ..............  (154-433)
-
-      METHODOLOGY:
-      The test is performed on Automated Haematology Analyzer.
-
-PERIPHERAL FILM                         ..............
-
-      NORMOCYTIC, NORMOCHROMIC
-
-      PLATELETS LOW ON FILM
-
-      LEUCOPENIA
-
-      LEFT SHIFT NEUTROPHILS
-
-      ? CAUSE
-
-      Kindly Note reference Ranges change on 06/12/2018.
-
-This is a computer generated report therefore does not require any signature.
-
-Dr. Bushra Moiz         Dr. Mohammad Usman Shaikh       Dr. Salman Naseem Adil   Dr. Natasha Ali              Dr. Muhammad Shariq Shaikh
-MBBS, FCPS(Hematology)  MBBS, FCPS(Hematology)          MBBS, FCPS (Hematology)  MBBS, FCPS (Hematology)      MBBS, FCPS (Hematology)
-Associate Professor     Associate Professor             Professor                Associate Professor          Assistant Professor
-
-Dr. Anila Rashid        Dr. Muhammad Hasan
-MBBS, FCPS(Hematology)  MBBS, FCPS(Hematology)
-Assistant Professor     Senior Instructor".ToLower();
-
+        reportText = request.ReportText.ToLower();
         var labs = await _labService.GetAllAsync(cancellationToken);
         var testTypes = await _testTypeService.GetAllTestTypeAsync(cancellationToken);
-        analytes = await _testTypeService.GetAllTestTypeAnalyteAsync("haematology", cancellationToken);
+        analytes = await _testTypeService.GetAllTestTypeAnalyteAsync(request.TestType, cancellationToken);
         keywords = await _dictionaryService.GetAllAsync(cancellationToken);
-        patientReport = new PatientReport();
+        //patientReport = new PatientReport();
         var analyteResultList = new List<AnalyteResultDto>();
-        
 
         for (i = 0; i < reportText.Length; i++)
         {
 
             if (IsAnalyteParsed && IsAnalyteResultParsed && IsAnalyteStartRangeParsed && IsAnalyteEndRangeParsed)
             {
-                analyteResult.PatientReportId = patientReportId;
+                analyteResult.PatientReportId = patientReport.Id;
                 await _analyteResultService.AddAnalyteResultAsync(analyteResult, cancellationToken);
                 analyteResultList.Add(analyteResult.Adapt<AnalyteResultDto>());
                 analyteResult = new AnalyteResult();
@@ -192,7 +128,7 @@ Assistant Professor     Senior Instructor".ToLower();
                 IsAnalyteEndRangeParsed = false;
             }
 
-            if (i == 1450)
+            if (i == 2300)
             {
 
             }
@@ -273,6 +209,8 @@ Assistant Professor     Senior Instructor".ToLower();
                                 }
                                 else if (isPreviousFieldExist)
                                 {
+
+
                                     Fields.Add(TempFieldQueue.Dequeue());
 
                                     if (TempFieldQueue.Count == 0)
@@ -310,9 +248,14 @@ Assistant Professor     Senior Instructor".ToLower();
                         // done - last field of multifield
                         if (IsFieldNameParsingStarted && !IsFieldNameParsed && IsMultiField)
                         {
-                            IsFieldNameParsed = true;
-                            IsValueParsingStarted = true;
-                            Fields.Add(word);
+                            var keyword = ExtractKeyword(word);
+                            if (keyword != "Invalid Keyword" && keyword != "ignore")
+                            {
+                                IsFieldNameParsed = true;
+                                IsValueParsingStarted = true;
+                                Fields.Add(keyword);
+
+                            }
                             word = string.Empty;
                             i++;
                             continue;
@@ -350,8 +293,14 @@ Assistant Professor     Senior Instructor".ToLower();
 
                         if (!IsFieldNameParsed && !IsValueParsed)
                         {
-                            IsFieldNameParsed = true;
-                            Fields.Add(word);
+                            var keyword = ExtractKeyword(word);
+                            if (keyword != "Invalid Keyword" && keyword != "ignore")
+                            {
+                                IsFieldNameParsed = true;
+                                Fields.Add(keyword);
+
+                            }
+
                             word = string.Empty;
                             continue;
                         }
@@ -383,10 +332,14 @@ Assistant Professor     Senior Instructor".ToLower();
                         }
                         else
                         {
-                            Fields.Add(word);
+                            if (keyword != "Invalid Keyword" && keyword != "ignore")
+                            {
+                                Fields.Add(keyword);
+                                IsFieldNameParsingStarted = true;
+                                IsFieldNameParsed = true;
+
+                            }
                             word = string.Empty;
-                            IsFieldNameParsingStarted = true;
-                            IsFieldNameParsed = true;
                         }
 
                     }
@@ -569,7 +522,7 @@ Assistant Professor     Senior Instructor".ToLower();
 
         var result = await _patientService.AddPatientAsync(patientReport, cancellationToken);
         var currentDir = System.IO.Directory.GetCurrentDirectory();
-        System.IO.File.WriteAllText(currentDir + "\\Results\\patient_" + patientReport.Id.ToString() + ".txt", JsonConvert.SerializeObject(patientReport));
+        //System.IO.File.WriteAllText(currentDir + "\\Results\\patient_" + patientReport.Id.ToString() + ".txt", JsonConvert.SerializeObject(patientReport));
 
         return new PatientDetailsDto
         {
@@ -589,9 +542,14 @@ Assistant Professor     Senior Instructor".ToLower();
         // done - first field of multifield
         else if (!IsFieldNameParsingStarted)
         {
-            IsMultiField = true;
-            IsFieldNameParsingStarted = true;
-            Fields.Add(word);
+            var keyword = ExtractKeyword(word);
+            if (keyword != "Invalid Keyword" && keyword != "ignore")
+            {
+                IsMultiField = true;
+                IsFieldNameParsingStarted = true;
+                Fields.Add(keyword);
+
+            }
             word = string.Empty;
             i++;
         }
@@ -599,7 +557,13 @@ Assistant Professor     Senior Instructor".ToLower();
         // done - middle field of multifield
         else if (IsFieldNameParsingStarted && !IsFieldNameParsed && IsMultiField)
         {
-            Fields.Add(word);
+            var keyword = ExtractKeyword(word);
+            if (keyword != "Invalid Keyword" && keyword != "ignore")
+            {
+                Fields.Add(keyword);
+
+            }
+
             if (reportText[i + 1] != '/')
             {
                 IsFieldNameParsed = true;
@@ -680,7 +644,7 @@ Assistant Professor     Senior Instructor".ToLower();
                 }
                 else
                 {
-                    Fields.ForEach(TempFieldQueue.Enqueue);
+                    Fields.Distinct().ToList().ForEach(TempFieldQueue.Enqueue);
                 }
 
                 isPreviousFieldExist = true;
@@ -783,6 +747,7 @@ Assistant Professor     Senior Instructor".ToLower();
 
     private void ParseFieldAndValueLists()
     {
+
         if (Fields.Count == Values.Count)
         {
             for (int j = 0; j < Fields.Count; j++)

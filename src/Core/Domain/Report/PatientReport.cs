@@ -9,13 +9,13 @@ using System.Threading.Tasks;
 namespace MediCare.Domain.Report;
 public class PatientReport : AuditableEntity, IAggregateRoot
 {
-    public string UserId { get; set; }
+    public string? UserId { get; set; }
     public DefaultIdType TestTypeId { get; set; }
     public DefaultIdType LabId { get; set; }
 
     // Patient
     public string? Gender { get; set; }
-    public string Name { get; set; } = default!;
+    public string? Name { get; set; }
     public string? Age { get; set; }
     public string? Location { get; set; }
     public string? MedicalRecordNo { get; set; }

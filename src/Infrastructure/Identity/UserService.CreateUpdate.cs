@@ -111,7 +111,8 @@ internal partial class UserService
             LastName = request.LastName,
             UserName = request.UserName,
             PhoneNumber = request.PhoneNumber,
-            IsActive = true
+            IsActive = true,
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
