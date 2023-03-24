@@ -100,6 +100,45 @@ public class ParserService : IParserService
 
     }
 
+    public async Task<bool> UploadPatientDetailsAsync(UpdatePateintDetailsRequest request, string userId, CancellationToken cancellationToken)
+    {
+        var patientReport = await _patientReportsRepository.GetAll().Where(pr => pr.Id == request.PatientDetails.Id).FirstOrDefaultAsync();
+        patientReport.Name = request.PatientDetails.Name;
+        patientReport.Gender = request.PatientDetails.Gender;
+        patientReport.UserId = request.PatientDetails.UserId;
+        patientReport.Age = request.PatientDetails.Age;
+        patientReport.Location = request.PatientDetails.Location;
+        patientReport.MedicalRecordNo = request.PatientDetails.MedicalRecordNo;
+        patientReport.SpecimenNo = request.PatientDetails.SpecimenNo;
+        patientReport.RequestedOn = request.PatientDetails.RequestedOn;
+        patientReport.ReportedOn = request.PatientDetails.ReportedOn;
+        patientReport.CollectedOn = request.PatientDetails.CollectedOn;
+        patientReport.AccountNo = request.PatientDetails.AccountNo;
+        patientReport.ReferredBy = request.PatientDetails.ReferredBy;
+        patientReport.Receipt = request.PatientDetails.Receipt;
+        patientReport.MedicalReportNo = request.PatientDetails.MedicalReportNo;
+        patientReport.Ward = request.PatientDetails.Ward;
+        patientReport.BedNo = request.PatientDetails.BedNo;
+
+        await _patientReportsRepository.UpdateAsync(patientReport, cancellationToken);
+        await _patientReportsRepository.SaveChangesAsync(cancellationToken);
+
+        var analyteResultList = await _analyteResultRepository.GetAll().Where(pr => request.AnalyteResultDetails.Select(ar => ar.Id).Contains(pr.Id)).ToListAsync();
+
+        foreach (var analyteResult in analyteResultList)
+        {
+            var analyteResultRequest = request.AnalyteResultDetails.Where(ar => ar.Id == analyteResult.Id).FirstOrDefault();
+            analyteResult.StartRange = analyteResultRequest.StartRange;
+            analyteResult.EndRange = analyteResultRequest.EndRange;
+            analyteResult.Result = analyteResultRequest.Result;
+            await _analyteResultRepository.UpdateAsync(analyteResult, cancellationToken);
+        }
+
+        await _analyteResultRepository.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
     public async Task<PatientDetailsDto> UploadPdfAsync(UploadPdfRequest request, string userId, CancellationToken cancellationToken)
     {
         AddPatientReportRequest patientReportRequest = new AddPatientReportRequest { LabName = request.LabName, TestType = request.TestType};

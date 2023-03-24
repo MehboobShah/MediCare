@@ -18,4 +18,11 @@ public class ParserController : VersionNeutralApiController
         return await Mediator.Send(request, cancellationToken);
     }
 
+    [HttpPost]
+    [DisableCors]
+    [OpenApiOperation("Updates pateint details.", "")]
+    public async Task<bool> UploadPatientDetailsAsync(UpdatePateintDetailsRequest request, CancellationToken cancellationToken)
+    {
+        return await Mediator.Send(request, cancellationToken);
+    }
 }
